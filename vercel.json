@@ -1,0 +1,17 @@
+{
+  "outputDirectory": "site",
+  "cleanUrls": true,
+  "buildCommand": null,
+  "installCommand": null,
+  "headers": [
+    {
+      "source": "/(.*)\\.(js|html)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ]
+}

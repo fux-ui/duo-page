@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>一頁雙聲 — 一頁講完你的故事，兩個角色幫你顧客人</title>
+<meta name="description" content="一頁雙聲（duo-page）：捲動敘事的單頁網站，加上兩個 AI 角色一起當客服。給民宿與旅宿、小店與品牌、活動與專案募集。先引起注意、再留住客人，最後才轉真人。" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="一頁雙聲" />
+<meta property="og:title" content="一頁雙聲 — 一頁講完你的故事，兩個角色幫你顧客人" />
+<meta property="og:description" content="捲動敘事單頁＋雙角色 AI 客服。官網有人看完，客服不再把人聊跑。" />
+<meta property="og:image" content="assets/ocean-life.jpg" />
+<meta property="og:locale" content="zh_TW" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#050505" />
+<!-- 聯絡資料的唯一來源：搜尋引擎讀它，chat.js 的抽屜底部也從這裡長出電話與 LINE。 -->
+<script type="application/ld+json" id="business">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfessionalService",
+  "name": "一頁雙聲",
+  "alternateName": "duo-page",
+  "description": "捲動敘事的單頁網站，加上兩個 AI 角色一起當客服。",
+  "telephone": "0988-720-396",
+  "areaServed": "TW",
+  "sameAs": ["https://lin.ee/XbfihdD"]
+}
+</script>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* 色彩沿用 ocean-life：夜色、暖白、一個橘色強調（只給可點的東西）。 */
+    --paper:#050505;       --paper-rgb:5,5,5;
+    --ink:#f4f1ea;         --ink-rgb:244,241,234;
+    --muted:#8a847b;
+    --accent:#c8502d;      --accent-rgb:200,80,45;
+    --on-accent:#fff;
+    --card:#0d0e0f;
+    --chat-surface:#0a0b0c;
+    --chat-scrim:rgba(0,0,0,.5);
+    --chat-field:rgba(var(--ink-rgb),.05);
+    --launcher-surface:rgba(16,18,20,.94);
+    --hairline:rgba(var(--ink-rgb),.1);
+    --hairline-strong:rgba(var(--ink-rgb),.14);
+    --chip-border:rgba(var(--ink-rgb),.28);
+    --chip-border-hover:rgba(var(--accent-rgb),.7);
+    --msg-bot:rgba(var(--ink-rgb),.06);
+    --msg-me:rgba(var(--accent-rgb),.16);
+    --link-underline:rgba(var(--accent-rgb),.4);
+    --launcher-dot:0 0 0 4px rgba(var(--accent-rgb),.18);
+    --serif:'Noto Serif TC','Songti TC','PMingLiU',serif;
+    --gutter:max(20px,5vw);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:var(--paper);color:var(--ink);font-family:"Noto Sans TC",sans-serif;
+    -webkit-font-smoothing:antialiased;overflow-x:clip}
+  /* 固定的捲動框（沿用 ocean-life）：body 不捲，捲動在 #scroller 裡，手機網址列不會伸縮、版面不跳。 */
+  html,body{height:100%;overflow:hidden}
+  #scroller{position:fixed;inset:0;overflow-x:hidden;overflow-y:auto;
+    overscroll-behavior:none;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){ #scroller{scroll-behavior:auto} }
+  a{color:inherit}
+  .wrap{width:min(1080px,100%);margin:0 auto;padding:0 var(--gutter)}
+  section{padding:clamp(72px,12svh,140px) 0}
+  section + section{border-top:1px solid var(--hairline)}
+
+  /* 文字一律由下往上、同一速度（ocean-life 的動態規則）。沒有 JS 就直接顯示。 */
+  .js .rise{opacity:0;transform:translateY(22px);
+    transition:opacity .7s ease,transform .7s cubic-bezier(.22,.8,.25,1)}
+  .js .rise.is-in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){ .js .rise{opacity:1;transform:none;transition:none} }
+
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .eyebrow{font-size:12px;letter-spacing:.24em;color:var(--muted);margin-bottom:1.2rem}
+  .eyebrow b{color:var(--accent);font-weight:500;margin-right:.6em}
+  h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:.04em}
+  h2{font-size:clamp(28px,4.4vw,44px);line-height:1.35;margin-bottom:1.1rem}
+  .lead{font-size:clamp(16px,1.6vw,18px);line-height:1.95;letter-spacing:.04em;color:rgba(var(--ink-rgb),.78);max-width:36em}
+
+  .btn{display:inline-flex;align-items:center;gap:.55rem;font-family:inherit;font-size:15px;font-weight:700;
+    letter-spacing:.06em;padding:.95rem 1.4rem;border-radius:999px;cursor:pointer;text-decoration:none;
+    border:1px solid transparent;transition:background .2s ease,border-color .2s ease}
+  .btn-primary{background:var(--accent);color:var(--on-accent)}
+  .btn-primary:hover{background:#d75c38}
+  .btn-ghost{background:transparent;color:var(--ink);border-color:var(--chip-border)}
+  .btn-ghost:hover{border-color:var(--chip-border-hover)}
+  .btn svg{width:16px;height:16px;flex:0 0 16px}
+  .btns{display:flex;flex-wrap:wrap;gap:.7rem}
+
+  /* 頂列 */
+  .top{display:flex;align-items:center;justify-content:space-between;padding-top:1.1rem;padding-bottom:1.1rem}
+  .brand{display:flex;align-items:baseline;gap:.6rem;text-decoration:none}
+  .brand strong{font-family:var(--serif);font-size:19px;letter-spacing:.12em}
+  .brand span{font-size:12px;color:var(--muted);letter-spacing:.14em}
+  .top a.mini{font-size:14px;letter-spacing:.08em;color:var(--accent);text-decoration:none;
+    border-bottom:1px solid var(--link-underline);padding-bottom:2px}
+
+  /* 1 開場 */
+  .hero{padding-top:clamp(28px,6svh,80px);border:0;min-height:calc(100svh - 64px);display:flex;align-items:center}
+  .hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(32px,6vw,80px);align-items:center}
+  .hero h1{font-size:clamp(30px,4.6vw,60px);line-height:1.28;margin-bottom:1.4rem}
+  .nw{white-space:nowrap}
+  .hero h1 em{font-style:normal;color:var(--accent)}
+  .hero .lead{margin-bottom:2rem}
+  .for{margin-top:2rem;font-size:13px;letter-spacing:.1em;color:var(--muted);display:flex;flex-wrap:wrap;gap:.5rem 1.1rem}
+  .for span::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);
+    margin-right:.55em;vertical-align:middle;transform:translateY(-1px)}
+  /* 開場的對話示意：兩隻貓趴在卡片上緣，跟按下客服時一樣。 */
+  .demo{position:relative}
+  .demo img{width:86%;height:auto;display:block;margin:0 4% -6px auto}
+  .demo-card{position:relative;background:var(--card);border:1px solid var(--hairline-strong);border-radius:18px;
+    padding:1.1rem 1rem 1.2rem;display:flex;flex-direction:column;gap:.6rem}
+  .demo-card .tag{font-size:11px;letter-spacing:.18em;color:var(--muted);padding:0 .2rem .3rem}
+  .bub{font-size:14px;line-height:1.8;letter-spacing:.03em;max-width:90%;padding:.55rem .85rem;border-radius:14px}
+  .bub.bot{background:var(--msg-bot);align-self:flex-start;border-bottom-left-radius:4px}
+  .bub.me{background:var(--msg-me);align-self:flex-end;border-bottom-right-radius:4px}
+  .bub[data-name]::before{content:attr(data-name);display:block;font-size:11px;letter-spacing:.12em;color:var(--muted)}
+
+  /* 2 痛點 */
+  .pains{display:grid;grid-template-columns:1fr 1fr;gap:clamp(20px,3vw,40px);margin-top:2.6rem}
+  .pain{border-top:1px solid var(--hairline-strong);padding-top:1.4rem}
+  .pain h3{font-size:clamp(22px,2.6vw,28px);line-height:1.45;margin-bottom:.8rem}
+  .pain p{font-size:15px;line-height:1.95;letter-spacing:.03em;color:rgba(var(--ink-rgb),.72)}
+  .answer{margin-top:3rem;font-family:var(--serif);font-size:clamp(20px,2.4vw,26px);line-height:1.6;letter-spacing:.05em}
+  .answer em{font-style:normal;color:var(--accent)}
+
+  /* 3 實例 */
+  .case{display:grid;grid-template-columns:1.3fr 1fr;gap:clamp(24px,4vw,56px);align-items:center;margin-top:2.4rem;
+    text-decoration:none}
+  .case figure{border-radius:16px;overflow:hidden;border:1px solid var(--hairline-strong);aspect-ratio:16/9;background:var(--card)}
+  .case img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s cubic-bezier(.22,.8,.25,1)}
+  .case:hover img{transform:scale(1.03)}
+  .case h3{font-size:22px;line-height:1.5;margin-bottom:.7rem}
+  .case p{font-size:15px;line-height:1.95;color:rgba(var(--ink-rgb),.72);margin-bottom:1.2rem}
+  .case .url{font-size:14px;letter-spacing:.06em;color:var(--accent);border-bottom:1px solid var(--link-underline);padding-bottom:2px}
+
+  /* 4 怎麼運作 */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,2.4vw,28px);margin-top:2.6rem;counter-reset:step}
+  .step{background:var(--card);border:1px solid var(--hairline);border-radius:18px;padding:1.5rem 1.3rem;
+    display:flex;flex-direction:column;gap:.9rem}
+  .step .num{font-size:12px;letter-spacing:.22em;color:var(--accent)}
+  .step h3{font-size:22px}
+  .step p{font-size:14.5px;line-height:1.9;color:rgba(var(--ink-rgb),.72)}
+  .step .bub{font-size:13.5px;max-width:100%;margin-top:auto}
+  .arrow{display:none}
+  .guard{margin-top:2rem;font-size:14px;line-height:1.9;color:var(--muted);max-width:44em}
+
+  /* 5 方案 */
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,2vw,24px);margin-top:2.6rem}
+  .plan{border:1px solid var(--hairline-strong);border-radius:18px;padding:1.5rem 1.3rem;position:relative;
+    display:flex;flex-direction:column;gap:.55rem}
+  .plan.main{border-color:rgba(var(--accent-rgb),.65);background:rgba(var(--accent-rgb),.05)}
+  .plan .badge{position:absolute;top:-11px;left:1.2rem;background:var(--accent);color:var(--on-accent);
+    font-size:11px;letter-spacing:.14em;padding:.2rem .6rem;border-radius:999px}
+  .plan .code{font-size:12px;letter-spacing:.22em;color:var(--muted)}
+  .plan h3{font-size:22px}
+  .plan p{font-size:14px;line-height:1.85;color:rgba(var(--ink-rgb),.72)}
+  .plan .price{margin-top:auto;padding-top:.8rem;font-size:15px;letter-spacing:.1em;color:var(--ink)}
+  .plan .price small{color:var(--muted);font-size:12px;margin-left:.4rem}
+  table.compare{width:100%;border-collapse:collapse;margin-top:2.2rem;font-size:14.5px;letter-spacing:.03em}
+  .compare th,.compare td{padding:.85rem .5rem;border-bottom:1px solid var(--hairline);text-align:center;vertical-align:middle}
+  .compare th:first-child,.compare td:first-child{text-align:left;padding-left:0;line-height:1.7}
+  .compare thead th{font-size:13px;letter-spacing:.16em;color:var(--muted);font-weight:500}
+  .compare thead th.main{color:var(--accent)}
+  .compare td:not(:first-child){width:15%}
+  .compare tr.group td{padding-top:1.5rem;font-size:12px;letter-spacing:.2em;color:var(--muted);border-bottom:0}
+  .ck{width:18px;height:18px;color:var(--accent);display:inline-block;vertical-align:middle}
+  .no{display:inline-block;width:10px;height:1px;background:rgba(var(--ink-rgb),.25);vertical-align:middle}
+  .addons{margin-top:2rem;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+  .addons b{font-size:13px;letter-spacing:.16em;color:var(--muted);font-weight:500;margin-right:.4rem}
+  .addons span{font-size:13.5px;letter-spacing:.05em;border:1px solid var(--chip-border);border-radius:999px;padding:.4rem .85rem}
+  .note{margin-top:1.4rem;font-size:13px;color:var(--muted);letter-spacing:.04em;line-height:1.8}
+
+  /* 6 流程 */
+  .flow{list-style:none;display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-top:2.6rem;position:relative}
+  .flow::before{content:"";position:absolute;left:18px;right:18px;top:18px;height:1px;background:var(--hairline-strong)}
+  .flow li{position:relative}
+  .flow .dot{width:37px;height:37px;border-radius:50%;background:var(--paper);border:1px solid rgba(var(--accent-rgb),.7);
+    color:var(--accent);font-size:14px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem}
+  .flow h3{font-size:19px;margin-bottom:.45rem}
+  .flow p{font-size:14px;line-height:1.85;color:rgba(var(--ink-rgb),.7)}
+
+  /* 7 常見問題 */
+  .faq{margin-top:2.2rem;border-top:1px solid var(--hairline)}
+  .faq details{border-bottom:1px solid var(--hairline)}
+  .faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:1rem;
+    padding:1.2rem 0;font-size:clamp(16px,1.7vw,18px);font-weight:500;letter-spacing:.04em;line-height:1.6}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary svg{width:16px;height:16px;flex:0 0 16px;color:var(--muted);transition:transform .3s ease}
+  .faq details[open] summary svg{transform:rotate(45deg);color:var(--accent)}
+  .faq details p{font-size:15px;line-height:1.95;letter-spacing:.03em;color:rgba(var(--ink-rgb),.74);padding:0 0 1.4rem;max-width:44em}
+
+  /* 8 預約諮詢 */
+  .contact{text-align:center}
+  .contact .cats{width:min(360px,72vw);height:auto;display:block;margin:0 auto -1px}
+  .contact-card{border:1px solid var(--hairline-strong);border-radius:22px;background:var(--card);
+    padding:clamp(28px,5vw,56px) var(--gutter)}
+  .contact h2{margin-bottom:.8rem}
+  .contact .lead{margin:0 auto 2rem}
+  .contact .btns{justify-content:center}
+  .direct{margin-top:1.6rem;font-size:14px;letter-spacing:.06em;color:var(--muted);display:flex;flex-wrap:wrap;
+    justify-content:center;gap:.4rem 1.4rem}
+  .direct a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--link-underline)}
+
+  footer{border-top:1px solid var(--hairline);padding:2rem 0 calc(6.5rem + env(safe-area-inset-bottom));
+    font-size:12.5px;letter-spacing:.08em;color:var(--muted)}
+  footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.6rem 1.4rem}
+  footer a{color:var(--muted);text-decoration:none}
+  footer a:hover{color:var(--ink)}
+
+  @media (max-width:860px){
+    .hero{min-height:0}
+    .hero .wrap{grid-template-columns:1fr}
+    .demo{max-width:440px}
+    .pains,.case{grid-template-columns:1fr}
+    .steps{grid-template-columns:1fr}
+    .plans{grid-template-columns:1fr}
+    .plan.main{order:-1}
+    .flow{grid-template-columns:1fr;gap:1.4rem}
+    .flow::before{left:18px;right:auto;top:18px;bottom:18px;width:1px;height:auto}
+    .flow li{display:grid;grid-template-columns:37px 1fr;column-gap:1rem}
+    .flow .dot{grid-row:span 2;margin:0}
+    .compare{font-size:13.5px}
+    .compare thead th{letter-spacing:.06em}
+    .compare td:not(:first-child){width:13%}
+  }
+
+  /* svh 是「網址列展開時」的視窗高，在手機上是個不會變的值，所以面板與貓不會跟著
+     網址列收合抽動。鍵盤彈出來時 chat.js 會另外量 visualViewport 蓋過它。
+     這裡刻意不用 dvh：dvh 每一幀都在變，正是抖動的來源。 */
+  :root{--chat-open-h:78vh}
+  @supports (height:1svh){:root{--chat-open-h:78svh}}
+
+  /* 線上客服：右下角一顆浮動按鈕，按了才有視窗（樣式整段沿用 ocean-life）。 */
+  #chat-toggle{position:fixed;right:max(16px,3vw);bottom:max(16px,3vh);z-index:70;
+    border:0;background:var(--launcher-surface);
+    color:var(--ink);font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.06em;
+    padding:.85rem 1.25rem;border-radius:999px;cursor:pointer;
+    display:flex;align-items:center;gap:.55rem;
+    transition:opacity .3s ease}
+  #chat-toggle::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);
+    box-shadow:var(--launcher-dot)}
+  #chat.is-open ~ #chat-toggle{opacity:0;pointer-events:none}
+
+  /* 視窗佔畫面約八成，按下去才出現。開的順序：背後的頁面暗下來、面板從底緣升起、
+     兩隻貓再一前一後從面板上緣探出頭；關的時候倒過來，貓先縮回去、面板才落下。
+     全部只動 transform 與 opacity，不用模糊。面板底色是實色：半透明會讓後面的大字
+     透出來，跟對話疊在一起。 */
+  #chat{position:fixed;left:0;right:0;bottom:var(--chat-bottom,0px);z-index:80;
+    height:0;
+    background:var(--chat-surface);
+    border-top:1px solid var(--hairline-strong);
+    display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;
+    contain:layout paint;pointer-events:none;
+    opacity:0;transform:translateY(100%);visibility:hidden;
+    transition:opacity .3s ease .12s,transform .42s cubic-bezier(.5,0,.75,0) .12s,visibility 0s .55s,height 0s .55s}
+  #chat.is-open{opacity:1;transform:none;visibility:visible;height:var(--chat-open-h);
+    transition:opacity .25s ease,transform .55s cubic-bezier(.22,.8,.25,1),visibility 0s,height 0s}
+  /* 面板上方露出來的那截頁面壓暗，視線才會落在對話上。不收手指，頁面照樣捲得動。 */
+  #chat-scrim{position:fixed;inset:0;z-index:79;background:var(--chat-scrim);pointer-events:none;
+    opacity:0;transition:opacity .4s ease .1s}
+  #chat.is-open ~ #chat-scrim{opacity:1;transition-delay:0s}
+  /* 兩隻貓趴在面板上緣：左邊戴帽子的是 Gojo，右邊胖的是 NuNu。框子的下緣就是牠們躲的地方（overflow 裁掉），貓頭從那裡往上
+     探出來，帶一點回彈；左邊那隻先。頭要跨出面板，所以自己一個固定層。 */
+  #chat-cats{position:fixed;right:max(6px,1.5vw);bottom:calc(var(--chat-bottom,0px) + var(--chat-open-h) - 8px);
+    z-index:81;width:min(420px,74vw);aspect-ratio:1000/358;pointer-events:none;
+    display:flex;overflow:hidden;visibility:hidden;transition:visibility 0s .55s}
+  #chat-cats span{display:block;height:100%;background:url(assets/cats-heads.png) no-repeat;
+    transform:translateY(102%);transition:transform .22s cubic-bezier(.5,0,.75,0)}
+  #chat-cats .cat-a{width:52%;background-size:192.3% 100%;background-position:0 0}
+  #chat-cats .cat-b{width:48%;background-size:208.4% 100%;background-position:100% 0}
+  #chat.is-open ~ #chat-cats{visibility:visible;transition-delay:0s}
+  #chat.is-open ~ #chat-cats span{transform:none;transition:transform .6s cubic-bezier(.34,1.5,.55,1) .32s}
+  #chat.is-open ~ #chat-cats .cat-b{transition-delay:.44s}
+
+  /* 鍵盤佔掉一半畫面時，面板只剩兩三百 px。這時候常見問題、註腳、店家資訊都讓位，
+     留下訊息與輸入列——打字的人要看的是這兩樣。鍵盤收起來就自己回來。 */
+  #chat.is-tight #chat-chips,
+  #chat.is-tight .chat-foot,
+  #chat.is-tight .chat-contact{display:none}
+  #chat-panel{width:min(720px,100%);margin:0 auto;padding:0 max(16px,5vw);
+    flex:1;min-height:0;display:flex;flex-direction:column}
+  /* 只有對話區會縮。其餘一律不縮——字卡列是 overflow-x:auto，在直向 flex 裡最小高度會被當成 0，
+     對話一長就被擠扁、壓到輸入框上。 */
+  #chat-panel > :not(#chat-log){flex-shrink:0}
+  /* 只有真正的控制項收手指，抽屜其餘地方讓觸控穿過去——不然這片三分之二高的東西
+     會把頁面的捲動吃掉。 */
+  #chat.is-open .chat-close,
+  #chat.is-open #chat-log,
+  #chat.is-open #chat-chips,
+  #chat.is-open #chat-form,
+  #chat.is-open .chat-contact{pointer-events:auto}
+  #chat-panel header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;
+    padding:.75rem 0 .6rem;border-bottom:1px solid var(--hairline)}
+  .chat-title{font-family:'Noto Serif TC','Songti TC','PMingLiU',serif;font-weight:700;
+    font-size:17px;letter-spacing:.06em}
+  .chat-note{font-size:12px;color:var(--muted);margin-top:.35rem;letter-spacing:.06em}
+  .chat-close{background:none;border:0;color:var(--muted);font-size:24px;line-height:1;
+    cursor:pointer;padding:.1rem .3rem;font-family:inherit}
+  .chat-close:hover{color:var(--ink)}
+  #chat-log{flex:1 1 auto;min-height:0;overflow-y:auto;padding:.9rem 0;display:flex;flex-direction:column;gap:.75rem;
+    -webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  /* 對話泡泡：貓在左、你在右，靠牆那一角收尖，看得出是誰在說。Gojo 與 NuNu 輪流講，
+     名字只寫在換貓說話的那一則上（chat.js 給 data-name）。新的一則由下往上浮進來（跟全站文字同一個方向）。 */
+  .chat-msg{font-size:15px;line-height:1.85;letter-spacing:.03em;white-space:pre-wrap;overflow-wrap:anywhere;
+    max-width:86%;padding:.65rem .95rem;border-radius:16px;animation:msg-in .35s cubic-bezier(.22,.8,.25,1)}
+  .chat-msg a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--link-underline)}
+  .chat-msg.bot{background:var(--msg-bot);align-self:flex-start;border-bottom-left-radius:4px}
+  .chat-msg.me{background:var(--msg-me);align-self:flex-end;border-bottom-right-radius:4px}
+  .chat-msg.bot[data-name]::before{content:attr(data-name);display:block;font-size:11px;letter-spacing:.12em;
+    color:var(--muted);margin-bottom:.15rem}
+  .chat-msg.bot[data-who="Gojo"][data-name]::before{color:rgba(var(--ink-rgb),.62)}
+  .chat-msg.err{background:none;padding:0;color:var(--muted);font-size:13px}
+  .chat-msg.bot.is-waiting::after{content:"• • •";color:var(--muted);letter-spacing:.1em;
+    animation:msg-wait 1.1s ease-in-out infinite}
+  @keyframes msg-in{from{opacity:0;transform:translateY(8px)}}
+  @keyframes msg-wait{50%{opacity:.25}}
+  /* 常見問題排一列，放不下就左右滑，不再疊成兩三行把對話擠掉。 */
+  #chat-chips{display:flex;gap:.45rem;padding:0 0 .8rem;overflow-x:auto;scrollbar-width:none;
+    overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+  #chat-chips::-webkit-scrollbar{display:none}
+  /* 引導字卡一直留著（阿福：問完一題還要看得到），只有鍵盤彈出來時讓位（.is-tight）。 */
+  #chat-chips button{flex:0 0 auto;font-family:inherit;font-size:13px;letter-spacing:.04em;color:var(--ink);
+    background:transparent;border:1px solid var(--chip-border);border-radius:999px;
+    padding:.45rem .85rem;cursor:pointer;white-space:nowrap}
+  #chat-chips button.chip-quiet{color:rgba(var(--ink-rgb),.62)}
+  #chat-chips button:hover{border-color:var(--chip-border-hover)}
+  /* 輸入框是一個看得見的框：有底色、有邊，點進去邊線轉成強調色。
+     字級一定要 16px 以上——iOS 遇到小於 16px 的輸入框，一點進去就把整頁放大，
+     而且不會自己縮回來，面板就歪到右下、送出鍵被切掉。 */
+  #chat-form{display:flex;gap:.5rem;align-items:flex-end;margin:.2rem 0 .7rem;padding:.4rem .4rem .4rem 1rem;
+    background:var(--chat-field);border:1px solid var(--chip-border);border-radius:22px;
+    transition:border-color .2s ease}
+  #chat-form:focus-within{border-color:var(--chip-border-hover)}
+  #chat-input{flex:1;min-width:0;background:none;border:0;color:var(--ink);font-family:inherit;font-size:16px;
+    line-height:1.6;letter-spacing:.03em;resize:none;max-height:104px;outline:none;padding:.32rem 0}
+  #chat-input::placeholder{color:rgba(var(--ink-rgb),.42)}
+  #chat-send{background:var(--accent);color:var(--on-accent);border:0;border-radius:50%;width:36px;height:36px;
+    flex:0 0 36px;cursor:pointer;font-size:16px;font-family:inherit;line-height:1}
+  #chat-send:disabled{opacity:.4;cursor:default}
+  .chat-foot{font-size:11px;color:var(--muted);letter-spacing:.04em;padding-bottom:.55rem}
+  /* 抽屜最下面那一節：電話、社群。一列排完，放不下就左右滑；地址頁尾已經有，手機上省掉。 */
+  .chat-contact{border-top:1px solid var(--hairline);padding:.75rem 0 calc(.9rem + env(safe-area-inset-bottom));
+    display:flex;gap:1.1rem;font-size:12px;letter-spacing:.06em;color:var(--muted);
+    overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+  .chat-contact::-webkit-scrollbar{display:none}
+  .chat-contact a{color:var(--muted);text-decoration:none;flex:0 0 auto}
+  .chat-contact a:hover{color:var(--ink)}
+  @media (max-width:700px){ .chat-contact .chat-addr{display:none} }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 2v12M2 8h12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  <symbol id="i-out" viewBox="0 0 16 16"><path d="M6 3h7v7M13 3L4 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div id="scroller">
+  <div class="wrap top">
+    <a class="brand" href="#top" id="top"><strong>一頁雙聲</strong><span>duo-page</span></a>
+    <a class="mini" href="#contact">預約諮詢</a>
+  </div>
+
+  <!-- 1 開場 -->
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow rise">捲動敘事單頁 ＋ 雙角色 AI 客服</p>
+        <h1 class="rise"><span class="nw">一頁講完你的故事，</span><br><span class="nw">兩個角色<em>幫你顧客人</em>。</span></h1>
+        <p class="lead rise">一頁好好看完的網站，加上兩個有個性的 AI 角色一起當客服。客人先被吸引、願意多聊幾句，真的要訂了，才交給你。</p>
+        <div class="btns rise">
+          <button class="btn btn-primary" type="button" data-chat><svg aria-hidden="true"><use href="#i-chat"/></svg>現在就跟牠們聊</button>
+          <a class="btn btn-ghost" href="#plans">看方案</a>
+        </div>
+        <p class="for rise"><span>民宿・旅宿</span><span>小店・品牌・工作室</span><span>活動・專案募集</span></p>
+      </div>
+      <div class="demo rise" aria-label="對話示意">
+        <img src="assets/cats-heads.png" width="1000" height="358" alt="Gojo 與 NuNu，兩隻趴著的虎斑貓" />
+        <div class="demo-card">
+          <p class="tag">對話示意・民宿版</p>
+          <p class="bub me">兩個人平日住，大概多少？</p>
+          <p class="bub bot" data-name="Gojo">雙人房平日的價錢我直接跟你說，這個寫得很清楚。你們是想來放空，還是有排好要去哪裡玩？</p>
+          <p class="bub bot" data-name="NuNu">先說好，我負責曬太陽，不負責帶路。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 痛點 -->
+  <section id="why">
+    <div class="wrap">
+      <p class="eyebrow rise"><b>01</b>為什麼</p>
+      <h2 class="rise">你的故事很好，<br>只是客人沒等到那裡。</h2>
+      <div class="pains">
+        <div class="pain rise">
+          <h3>官網沒人看完。</h3>
+          <p>首頁、關於我們、服務項目、聯絡我們——點了三頁還沒看到重點，客人就關掉了。你真正想說的那件事，藏在第四層。</p>
+        </div>
+        <div class="pain rise">
+          <h3>罐頭客服，把人聊跑。</h3>
+          <p>「您好，請問有什麼需要協助的地方？」問什麼都回「請洽客服專線」。客人不是不想問，是問了也得不到答案。</p>
+        </div>
+      </div>
+      <p class="answer rise">一頁雙聲把兩件事一起解決：<br>故事<em>一頁講完</em>，問題<em>兩個角色接</em>。</p>
+    </div>
+  </section>
+
+  <!-- 3 實例 -->
+  <section id="case">
+    <div class="wrap">
+      <p class="eyebrow rise"><b>02</b>實例</p>
+      <h2 class="rise">先看一個已經上線的。</h2>
+      <a class="case rise" href="https://ocean2life.vercel.app/" target="_blank" rel="noopener noreferrer">
+        <figure><img src="assets/ocean-life.jpg" width="1200" height="675" alt="ocean-life 活動頁的開場畫面" loading="lazy" /></figure>
+        <div>
+          <h3>恆春海邊民宿「防曬不要擦太多」<br>主題同居計畫</h3>
+          <p>一頁八幕的捲動敘事，一條光帶沿著台灣西岸從台北跑到恆春。右下角按下去，接待你的也是 Gojo 和 NuNu——價錢、規定照實講，恆春好吃好玩的陪你聊。</p>
+          <span class="url">ocean2life.vercel.app ↗</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- 4 雙客服怎麼運作 -->
+  <section id="how">
+    <div class="wrap">
+      <p class="eyebrow rise"><b>03</b>雙客服怎麼運作</p>
+      <h2 class="rise">順序是固定的：<br>先吸引，再留住，最後才轉真人。</h2>
+      <p class="lead rise">兩個角色依你的品牌設計：可以是店貓、老闆和學徒、兩個吉祥物。他們會互相接話、偶爾拌嘴，客人比較願意多聊幾句。</p>
+      <div class="steps">
+        <div class="step rise">
+          <span class="num">STEP 1</span>
+          <h3>引起注意</h3>
+          <p>角色有個性，第一句話就讓人想回，不是「您好請問需要什麼協助」。</p>
+          <p class="bub bot" data-name="NuNu">你是第一次來吧？姊在忙，先由我這個比較帥的招呼你。</p>
+        </div>
+        <div class="step rise">
+          <span class="num">STEP 2</span>
+          <h3>留住客人</h3>
+          <p>回答完，大多會反問一句——什麼時候來、幾個人、在找什麼——讓對話接下去，也問出真正的需求。</p>
+          <p class="bub bot" data-name="Gojo">寵物可以帶，規定我一次講完給你。你家是貓派還是狗派？</p>
+        </div>
+        <div class="step rise">
+          <span class="num">STEP 3</span>
+          <h3>最後才轉真人</h3>
+          <p>客人真的要訂、要付款、要確認細節，才把 LINE 或電話交出去，而且每次說法都不一樣。</p>
+          <p class="bub bot" data-name="Gojo">日期這種事讓老闆親自確認最準，這是他的 LINE，我先幫你記著兩位。</p>
+        </div>
+      </div>
+      <p class="guard rise">價格、規定、檔期只照你給的知識庫講，不猜、不自己加規定；知識庫沒寫的，老實說不確定、交給你。其他話題可以自由聊。</p>
+    </div>
+  </section>
+
+  <!-- 5 方案 -->
+  <section id="plans">
+    <div class="wrap">
+      <p class="eyebrow rise"><b>04</b>方案</p>
+      <h2 class="rise">三種做法，看你要顧到哪裡。</h2>
+      <div class="plans">
+        <div class="plan rise">
+          <span class="code">PLAN A</span>
+          <h3>一頁</h3>
+          <p>3–5 幕的捲動敘事單頁，把你的故事一次講完。</p>
+          <p class="price">洽詢</p>
+        </div>
+        <div class="plan main rise">
+          <span class="badge">主力</span>
+          <span class="code">PLAN B</span>
+          <h3>一頁＋雙客服</h3>
+          <p>A 的全部，再加上兩個角色與知識庫，幫你顧客人。</p>
+          <p class="price">洽詢</p>
+        </div>
+        <div class="plan rise">
+          <span class="code">PLAN C</span>
+          <h3>陪跑</h3>
+          <p>B 的全部，再加上每月維護、對話月報與分流判斷。</p>
+          <p class="price">洽詢<small>月費</small></p>
+        </div>
+      </div>
+
+      <table class="compare rise">
+        <thead>
+          <tr><th scope="col"><span class="sr">內容</span></th><th scope="col">A</th><th scope="col" class="main">B</th><th scope="col">C</th></tr>
+        </thead>
+        <tbody>
+          <tr class="group"><td colspan="4">一頁</td></tr>
+          <tr><td>3–5 幕捲動敘事單頁</td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+          <tr><td>手機固定捲動框，網址列不跳動</td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+          <tr><td>品牌色、字型、聯絡頁尾</td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+          <tr><td>Vercel 上線、協助綁網域</td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+          <tr class="group"><td colspan="4">雙客服</td></tr>
+          <tr><td>兩個角色與他們的關係，依品牌設計</td><td><i class="no"></i></td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+          <tr><td>知識庫：價格規定照事實講，其他自由聊</td><td><i class="no"></i></td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+          <tr><td>留客設計：反問，最後才轉真人</td><td><i class="no"></i></td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+          <tr><td>成本護欄：限流、花費上限提醒、上線前測試題</td><td><i class="no"></i></td><td><svg class="ck"><use href="#i-check"/></svg></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+          <tr class="group"><td colspan="4">陪跑</td></tr>
+          <tr><td>每月知識庫維護</td><td><i class="no"></i></td><td><i class="no"></i></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+          <tr><td>對話月報</td><td><i class="no"></i></td><td><i class="no"></i></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+          <tr><td>分流判斷：省 token、擋亂鬧、想訂就跳出聯絡按鈕</td><td><i class="no"></i></td><td><i class="no"></i></td><td><svg class="ck"><use href="#i-check"/></svg></td></tr>
+        </tbody>
+      </table>
+
+      <div class="addons rise">
+        <b>加購</b><span>多一幕</span><span>多語言</span><span>角色插畫</span><span>LINE 官方帳號串接</span>
+      </div>
+      <p class="note rise">價格依內容報價，一律洽詢。AI 用量由你自己的帳號支付，見下方常見問題。</p>
+    </div>
+  </section>
+
+  <!-- 6 流程 -->
+  <section id="flow">
+    <div class="wrap">
+      <p class="eyebrow rise"><b>05</b>流程與時程</p>
+      <h2 class="rise">從聊一聊到上線，五步。</h2>
+      <ol class="flow">
+        <li class="rise"><span class="dot">1</span><h3>諮詢</h3><p>聊你的品牌、客人、想達成什麼，決定方案。</p></li>
+        <li class="rise"><span class="dot">2</span><h3>提供素材</h3><p>照片、文字、品牌色、聯絡方式，以及客服要知道的事實。</p></li>
+        <li class="rise"><span class="dot">3</span><h3>角色與知識庫</h3><p>設計兩個角色和他們的關係，整理知識庫。</p></li>
+        <li class="rise"><span class="dot">4</span><h3>預覽</h3><p>給你預覽網址，用自己的手機看、自己試聊，要改就改。</p></li>
+        <li class="rise"><span class="dot">5</span><h3>上線</h3><p>正式上線，協助綁定你的網域。</p></li>
+      </ol>
+      <p class="note rise">每一步要多久，看素材準備的速度和方案內容，諮詢時一起排。</p>
+    </div>
+  </section>
+
+  <!-- 7 常見問題 -->
+  <section id="faq">
+    <div class="wrap">
+      <p class="eyebrow rise"><b>06</b>常見問題</p>
+      <h2 class="rise">先回答幾個一定會問的。</h2>
+      <div class="faq rise">
+        <details>
+          <summary>AI 的費用由誰付？<svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+          <p>由你自己付。雙客服接的是你自己的 AI 金鑰（例如 Google Gemini，或經 Vercel AI Gateway 接 Claude 等模型），帳單直接在你的帳號，用了多少看得一清二楚，不經過我們轉手。</p>
+        </details>
+        <details>
+          <summary>一個月 AI 大概會花多少？<svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+          <p>看對話量和選用的模型，沒辦法先給一個固定數字。B 方案會幫你設好限流，並提醒你在 AI 平台上設每月花費上限，用量不會失控。</p>
+        </details>
+        <details>
+          <summary>AI 客服會不會亂講價格、亂答應客人？<svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+          <p>價格、規定、檔期這類事只照你給的知識庫講，不推測、不自己加規定；知識庫沒寫的，會老實說不確定並交給你。上線前會跑一輪測試題確認。</p>
+        </details>
+        <details>
+          <summary>角色一定要是貓嗎？<svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+          <p>不用。Gojo 和 NuNu 是我們的吉祥物。你的兩個角色依品牌設計：店裡的貓狗、老闆和學徒、兩個吉祥物都可以，重點是他們之間的關係。</p>
+        </details>
+        <details>
+          <summary>我需要準備什麼？<svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+          <p>照片、想說的故事、品牌色、聯絡方式；要做雙客服的話，再加上客服要知道的事實，例如價格、規定、常被問的問題。不確定要給什麼，諮詢時會一起列。</p>
+        </details>
+        <details>
+          <summary>只要網頁、不要客服可以嗎？<svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+          <p>可以，就是 A 方案。之後想加雙客服再談。</p>
+        </details>
+        <details>
+          <summary>可以用我自己的網域嗎？<svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+          <p>可以，上線時協助綁定。還沒有網域的話，諮詢時一起看。</p>
+        </details>
+        <details>
+          <summary>上線之後，價格或規定改了怎麼辦？<svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+          <p>C 方案每月幫你維護知識庫，並附對話月報，看得出客人都在問什麼。其他方案的修改方式，諮詢時說明。</p>
+        </details>
+        <details>
+          <summary>價格多少？<svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+          <p>依幕數、角色與知識庫的內容報價，一律洽詢。先跟 Gojo and NuNu 聊聊你的需求，再找阿福報價會最快。</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 預約諮詢 -->
+  <section id="contact" class="contact">
+    <div class="wrap">
+      <img class="cats rise" src="assets/cats-heads.png" width="1000" height="358" alt="" loading="lazy" />
+      <div class="contact-card rise">
+        <h2>先跟牠們聊聊，<br>再交給阿福。</h2>
+        <p class="lead">說說你的店、你的活動，Gojo 和 NuNu 會先幫你把需求理清楚。要報價、要開始做，就轉阿福。</p>
+        <div class="btns">
+          <button class="btn btn-primary" type="button" data-chat><svg aria-hidden="true"><use href="#i-chat"/></svg>預約諮詢</button>
+          <a class="btn btn-ghost" href="https://lin.ee/XbfihdD" target="_blank" rel="noopener noreferrer">直接加 LINE<svg aria-hidden="true"><use href="#i-out"/></svg></a>
+        </div>
+        <p class="direct"><span>電話 <a href="tel:0988720396">0988-720-396</a></span><span>LINE <a href="https://lin.ee/XbfihdD" target="_blank" rel="noopener noreferrer">lin.ee/XbfihdD</a></span></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span>一頁雙聲 duo-page・阿福</span>
+      <span><a href="https://lin.ee/XbfihdD" target="_blank" rel="noopener noreferrer">LINE</a>　<a href="tel:0988720396">0988-720-396</a></span>
+    </div>
+  </footer>
+</div>
+
+  <div id="chat">
+    <section id="chat-panel" role="dialog" aria-label="線上客服">
+      <header>
+        <div>
+          <p class="chat-title">Gojo and NuNu</p>
+          <p class="chat-note">一頁雙聲的吉祥物。方案、流程、AI 費用，都可以問</p>
+        </div>
+        <button class="chat-close" type="button" aria-label="關閉">&times;</button>
+      </header>
+      <div id="chat-log" role="log" aria-live="polite"></div>
+      <div id="chat-chips">
+        <button type="button">方案差在哪？</button>
+        <button type="button">AI 費用誰付？</button>
+        <button type="button" class="chip-quiet">適合我的小店嗎？</button>
+        <button type="button" class="chip-quiet">多久可以上線？</button>
+      </div>
+      <form id="chat-form">
+        <textarea id="chat-input" rows="1" maxlength="1200" placeholder="問 Gojo and NuNu…" aria-label="輸入問題"></textarea>
+        <button id="chat-send" type="submit" aria-label="送出">&uarr;</button>
+      </form>
+      <p class="chat-foot">貓是 AI 扮的，方案與價格以阿福的回覆為準。</p>
+      <div class="chat-contact"></div>
+    </section>
+  </div>
+  <div id="chat-scrim" aria-hidden="true"></div>
+  <div id="chat-cats" aria-hidden="true"><span class="cat-a"></span><span class="cat-b"></span></div>
+  <button id="chat-toggle" type="button" aria-controls="chat-panel">問 NuNu</button>
+
+  <script>
+    // 文字由下往上浮現：進到畫面才加 .is-in。捲動框是 #scroller，所以 root 要指定它。
+    (() => {
+      const items = document.querySelectorAll('.rise');
+      if (!('IntersectionObserver' in window)) return;
+      document.documentElement.classList.add('js');
+      const io = new IntersectionObserver(entries => {
+        for (const e of entries) if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
+      }, {root: document.getElementById('scroller'), rootMargin: '0px 0px -8% 0px'});
+      items.forEach(el => io.observe(el));
+    })();
+  </script>
+  <script src="chat.js"></script>
+</body>
+</html>
